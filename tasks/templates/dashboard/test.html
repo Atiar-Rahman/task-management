@@ -1,0 +1,21 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock title %}</title>
+    <link rel="stylesheet" href="{% static "css/style.css" %}">
+    <link rel="stylesheet" href="{% static "css/output.css" %}">
+</head>
+<body>
+    {% comment %} common code both dashboard this code inherite other code {% endcomment %}
+    <h1>common code</h1>
+    {% block tasks %}
+    
+    {% endblock tasks %}
+
+    <img src="{% static "images/download.jpeg" %}" alt="">
+</body>
+</html>

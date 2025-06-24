@@ -1,41 +1,66 @@
 from django.db import models
 
 # Create your models here.
+
+
+class Employee(models.Model):
+    name = models.CharField(max_length=100)
+    email = models.EmailField(unique=True)
+    # tasks
+
+    def __str__(self):
+        return self.name
+
+
 class Task(models.Model):
-    # project = models.models.ForeignKey("Project",on_delete=models.CASCADE)
+    project = models.ForeignKey(
+    "Project",
+    on_delete=models.CASCADE,
+    null=True,
+    blank=True
+    )
+
+    assigned_to = models.ManyToManyField(Employee, related_name='tasks',default='atiar')
+    # notun_string = models.CharField(max_length=100, default="")
     title = models.CharField(max_length=250)
     description = models.TextField()
-    dudate = models.DateField()
+    due_date = models.DateField()
     is_completed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # details
 
-    # one to one
-    # many to one
-    # many to many
+# One to One
+# Many to One
+# Many to Many
 
-class TaskDetails(models.Model):
 
-    HIGH='H'
-    MEDIUM='M'
-    LOW='L'
-
-    PRIOITY_OPTIONS = (
+class TaskDetail(models.Model):
+    HIGH = 'H'
+    MEDIUM = 'M'
+    LOW = 'L'
+    PRIORITY_OPTIONS = (
         (HIGH, 'High'),
         (MEDIUM, 'Medium'),
         (LOW, 'Low')
     )
-    task = models.OneToOneField(Task,on_delete=models.CASCADE)
-    assign_to = models.CharField(max_length=100)
-    priority = models.CharField(max_length=1,choices=PRIOITY_OPTIONS,default=LOW)
+    task = models.OneToOneField(
+        Task,
+        on_delete=models.CASCADE,
+        related_name='details'
+    )
+    assigned_to = models.CharField(max_length=100)
+    priority = models.CharField(
+        max_length=1, choices=PRIORITY_OPTIONS, default=LOW)
 
+# Task.objects.get(id=2)
+# select * from task where id = 2
+# ORM
 
-
-
-#  Task.objects.get(id=2)
-# select * from task wjere id = 2
-# orm = object relation mapping
 
 class Project(models.Model):
     name = models.CharField(max_length=100)
     start_date = models.DateField()
+
+# task = onekgula employee ekta task
+# employee = onekgula task er jonno assign ase

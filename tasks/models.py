@@ -3,10 +3,17 @@ from django.db import models
 # Create your models here.
 
 
+class Project(models.Model):
+    name = models.CharField(max_length=100)
+    start_date = models.DateField()
+
+    def __str__(self):
+        return self.name
+
+
 class Employee(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
-    # tasks
 
     def __str__(self):
         return self.name
@@ -14,25 +21,21 @@ class Employee(models.Model):
 
 class Task(models.Model):
     project = models.ForeignKey(
-    "Project",
-    on_delete=models.CASCADE,
-    null=True,
-    blank=True
+        Project,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
     )
-
-    assigned_to = models.ManyToManyField(Employee, related_name='tasks',default='atiar')
-    # notun_string = models.CharField(max_length=100, default="")
+    assigned_to = models.ManyToManyField(Employee, related_name='tasks')
     title = models.CharField(max_length=250)
     description = models.TextField()
     due_date = models.DateField()
     is_completed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    # details
 
-# One to One
-# Many to One
-# Many to Many
+    def __str__(self):
+        return self.title
 
 
 class TaskDetail(models.Model):
@@ -53,14 +56,5 @@ class TaskDetail(models.Model):
     priority = models.CharField(
         max_length=1, choices=PRIORITY_OPTIONS, default=LOW)
 
-# Task.objects.get(id=2)
-# select * from task where id = 2
-# ORM
-
-
-class Project(models.Model):
-    name = models.CharField(max_length=100)
-    start_date = models.DateField()
-
-# task = onekgula employee ekta task
-# employee = onekgula task er jonno assign ase
+    def __str__(self):
+        return f"Details of {self.task.title}"

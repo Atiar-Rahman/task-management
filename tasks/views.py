@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test, login_required, permission_required
 from users.views import is_admin
 from django.views import View
-from django.views.generic.edit import CreateView,UpdateView
+from django.views.generic.edit import CreateView,UpdateView,DeleteView,ListView
 from django.urls import reverse_lazy
 
 
@@ -320,6 +320,19 @@ def delete_task(request, id):
         messages.error(request, 'Something went wrong')
         return redirect('manager-dashboard')
 
+class TaskDeleteView(DeleteView):
+    model = Task
+    template_name = 'task_confirm_delete.html'  # Optional: your confirmation template
+    pk_url_kwarg = 'id'  # Use 'id' instead of default 'pk'
+    success_url = reverse_lazy('manager-dashboard')
+
+    def post(self, request, *args, **kwargs):
+        messages.success(request, 'Task Deleted Successfully')
+        return super().post(request, *args, **kwargs)
+
+    def handle_no_permission(self):
+        messages.error(self.request, 'Something went wrong')
+        return redirect('manager-dashboard')
 
 @login_required
 @permission_required("tasks.view_task", login_url='no-permission')
@@ -328,6 +341,14 @@ def view_task(request):
         num_task=Count('task')).order_by('num_task')
     return render(request, "show_task.html", {"projects": projects})
 
+
+class TaskSummaryView(ListView):
+    model = Project
+    template_name = 'show_task.html'
+    context_object_name = 'projects'
+
+    def get_queryset(self):
+        return Project.objects.annotate(num_task=Count('task')).order_by('num_task')
 
 @login_required
 @permission_required("tasks.view_task", login_url='no-permission')
@@ -344,7 +365,24 @@ def task_details(request, task_id):
 
     return render(request, 'task_details.html', {"task": task, 'status_choices': status_choices})
 
+class TaskDetailView(View):
+    template_name = 'task_details.html'
+    pk_url_kwarg = 'task_id'
+    def get(self, request, task_id, *args, **kwargs):
+        task = Task.objects.get(id=task_id)
+        status_choices = Task.STATUS_CHOICES
+        return render(request, self.template_name, {
+            'task': task,
+            'status_choices': status_choices
+        })
 
+    def post(self, request, task_id, *args, **kwargs):
+        task = Task.objects.get(id = task_id)
+        selected_status = request.POST.get('task_status')
+        task.status = selected_status
+        task.save()
+        return redirect('task-details', task.id)
+    
 @login_required
 def dashboard(request):
     if is_manager(request.user):

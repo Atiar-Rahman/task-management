@@ -1,0 +1,8 @@
+<div style="width: 600px; margin: auto;">
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ task_form }} <!-- TaskModelForm -->
+        {{ task_detail_form }} <!-- TaskDetailModelForm -->
+        <button type="submit" class="btn btn-primary">Create Task</button>
+    </form>
+</div>

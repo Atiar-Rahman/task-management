@@ -7,6 +7,9 @@ from django.db.models import Q, Count, Max, Min, Avg
 from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test, login_required, permission_required
 from users.views import is_admin
+from django.views import View
+from django.views.generic.edit import CreateView,UpdateView
+from django.urls import reverse_lazy
 
 
 # Create your views here.
@@ -95,6 +98,111 @@ def create_task(request):
     context = {"task_form": task_form, "task_detail_form": task_detail_form}
     return render(request, "task_form.html", context)
 
+# class based view for 
+class CreateTask(View):
+    """View for creating a Task and associated TaskDetail"""
+    template_name = "task_form.html"
+
+    def get(self, request, *args, **kwargs):
+        task_form = TaskModelForm()
+        task_detail_form = TaskDetailModelForm()
+        context = {
+            "task_form": task_form,
+            "task_detail_form": task_detail_form
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
+        task_form = TaskModelForm(request.POST)
+        task_detail_form = TaskDetailModelForm(request.POST, request.FILES)
+
+        if task_form.is_valid() and task_detail_form.is_valid():
+            # Save Task first, using commit=False so we can handle M2M and related models
+            task = task_form.save(commit=False)
+
+            # Optional: ensure project exists to avoid foreign key errors
+            if not task.project_id:
+                default_project = Project.objects.first()
+                if default_project:
+                    task.project = default_project
+                else:
+                    messages.error(request, "❌ No project exists. Please create a project first.")
+                    return redirect('create-task')
+
+            task.save()
+            task_form.save_m2m()  # Save assigned_to many-to-many relationship
+
+            # Save TaskDetail
+            task_detail = task_detail_form.save(commit=False)
+            task_detail.task = task
+            task_detail.save()
+
+            messages.success(request, "✅ Task Created Successfully")
+            return redirect('create-task')
+
+        # If not valid, return form with errors
+        messages.error(request, "⚠️ Please correct the errors below.")
+        context = {
+            "task_form": task_form,
+            "task_detail_form": task_detail_form
+        }
+        return render(request, self.template_name, context)
+
+
+# class CreateTaskView1(CreateView):
+#     template_name = 'task_form1.html'
+#     form_class = TaskModelForm
+
+#     def get_context_data(self, **kwargs):
+#         print(**kwargs)
+#         context = super().get_context_data(**kwargs)
+#         context['task_form'] = kwargs.get('task_form',TaskModelForm())
+#         # context['task_detail_form'] = TaskDetailModelForm
+#         return context
+    
+
+#     def get(self,request,*args, **kwargs):
+#         context = self.get_context_data()
+#         print(context)
+#         return render(request,self.template_name,context) 
+        
+#     def post(self,request,*args,**kwargs):
+#         pass
+class CreateTaskView1(CreateView):
+    # model = Task
+    form_class = TaskModelForm
+    template_name = 'task_form1.html'
+    success_url = reverse_lazy('task-list')  # Change to your success page
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['task_form'] = kwargs.get('task_form', TaskModelForm())
+        context['task_detail_form'] = kwargs.get('task_detail_form', TaskDetailModelForm())
+        return context
+
+
+    def get(self, request, *args, **kwargs):
+        """Handles GET request and renders both forms."""
+        self.object = None
+        context = self.get_context_data()
+        return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
+        """Handles POST request and processes both forms."""
+        task_form = TaskModelForm(request.POST)
+        task_detail_form = TaskDetailModelForm(request.POST, request.FILES)
+
+        if task_form.is_valid() and task_detail_form.is_valid():
+            task = task_form.save()
+            task_detail = task_detail_form.save(commit=False)
+            task_detail.task = task
+            task_detail.save()
+            messages.success(request, "Task and details created successfully")
+            return super().form_valid(task_form)  # Redirect to success_url
+
+        # If form is invalid, re-render with errors
+        context = self.get_context_data(task_form=task_form, task_detail_form=task_detail_form)
+        return render(request, self.template_name, context)
 
 @login_required
 @permission_required("tasks.change_task", login_url='no-permission')
@@ -123,6 +231,81 @@ def update_task(request, id):
 
     context = {"task_form": task_form, "task_detail_form": task_detail_form}
     return render(request, "task_form.html", context)
+
+# update task used classbased view
+class UpdateTask(View):
+    template_name = "task_form.html"
+    def get(self,request,id,*args,**kwargs):
+        task = Task.objects.get(id=id)
+        task_form = TaskModelForm(instance=task)  # For GET
+        if task.details:
+            task_detail_form = TaskDetailModelForm(instance=task.details)
+        else:
+            task_detail_form = TaskDetailModelForm()
+        
+        context = {"task_form": task_form, 
+                   "task_detail_form": task_detail_form
+                   }
+        return render(request, self.template_name, context)
+
+       
+    def post(self,request,id,*args,**kwargs):
+        task = Task.objects.get(id=id)
+        
+        task_form = TaskModelForm(request.POST,instance = task)
+        task_detail_form = TaskDetailModelForm(request.POST,instance = task)
+
+        if task_form.is_valid() and task_detail_form.is_valid():
+            task = task_form.save()
+            task_detail = task_detail_form.save(commit=False)
+            task_detail.task = task
+            task_detail.save()
+
+            messages.success(request, "Task Updated Successfully")
+            return redirect('update-task', id=id)
+        
+        context = {
+            "task_form": task_form,
+            "task_detail_form": task_detail_form
+        }
+        return render(request, self.template_name, context)
+
+
+
+
+class UpdateTask1(UpdateView):
+    model = Task
+    form_class = TaskModelForm
+    template_name = 'task_form1.html'
+    context_object_name = 'task'
+    pk_url_kwarg = 'id'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['task_form'] = self.get_form()
+        
+        if hasattr(self.object,'details') and self.object.details:
+            context['task_detail_form'] = TaskDetailModelForm(instance = self.object.details)
+        else:
+            context['task_detail_form'] = TaskDetailModelForm()
+        return context
+    
+    def post(self,request,*args,**kwargs):
+        self.object = self.get_object()
+        task_form = TaskModelForm(request.POST,instance=self.object)
+        task_detail_form = TaskDetailModelForm(request.POST,request.FILES,instance=getattr(self.object,'details',None))
+
+        if task_form.is_valid() and task_detail_form.is_valid():
+            task = task_form.save()
+            task_detail = task_detail_form.save(commit=False)
+            task_detail.task= task
+            task_detail.save()
+
+            return redirect('update-task',self.object.id)
+        return self.render_to_response(self.get_context_data(
+            task_form=task_form,
+            task_detail_form=task_detail_form
+        ))
 
 
 @login_required
